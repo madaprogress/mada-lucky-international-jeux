@@ -1,3 +1,35 @@
+Skip to content
+Navigation Menu
+
+madaprogress
+mada-lucky-international-jeux
+Repository navigation
+Code
+Issues
+Pull requests
+Actions
+Commit b76ef30
+madaprogress
+madaprogress
+authored
+2 hours ago
+Verified
+Update server.js
+main
+1 parent 
+d065cf1
+ commit 
+b76ef30
+1 file changed
+
++147
+-4
+Lines changed: 147 additions & 4 deletions
+Search within code
+ 
+‎server.js‎
+Original file line number	Diff line number	Diff line change
+@@ -1,25 +1,168 @@
 const express = require("express");
 const helmet = require("helmet");
 const path = require("path");
@@ -8,6 +40,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(helmet());
+app.use(express.json());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -17,7 +50,6 @@ const pool = new Pool({
     ? { rejectUnauthorized: false }
     : false
 });
-
 const networks = [
   "T.BEP20 - USD",
   "T.TRC20 - USD",
@@ -32,25 +64,19 @@ const networks = [
   "POLYGON",
   "ETH - PYUSD"
 ];
-
 function checkAdmin(req, res, next) {
   const password = req.headers["x-admin-password"];
   const expected = process.env.ADMIN_PASSWORD;
-
   if (!expected || typeof password !== "string") {
     return res.status(401).json({ error: "Accès refusé" });
   }
-
   const a = Buffer.from(password);
   const b = Buffer.from(expected);
-
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return res.status(401).json({ error: "Mot de passe incorrect" });
   }
-
   next();
 }
-
 async function initializeDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS crypto_wallets (
@@ -61,7 +87,6 @@ async function initializeDatabase() {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-
   for (const name of networks) {
     await pool.query(
       `INSERT INTO crypto_wallets (network_name)
@@ -70,10 +95,8 @@ async function initializeDatabase() {
       [name]
     );
   }
-
   console.log("Wallet database ready");
 }
-
 app.get("/api/status", (req, res) => {
   res.json({
     platform: "MADA LUCKY INTERNATIONAL JEUX",
@@ -87,32 +110,25 @@ app.get("/api/admin/wallets", checkAdmin, async (req, res) => {
       `SELECT network_name, wallet_address, status
        FROM crypto_wallets ORDER BY id ASC`
     );
-
     res.json(result.rows);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
-
 app.put("/api/admin/wallets", checkAdmin, async (req, res) => {
   const wallets = req.body.wallets;
-
   if (!Array.isArray(wallets) || wallets.length > networks.length) {
     return res.status(400).json({ error: "Données invalides" });
   }
-
   const allowedStatuses = [
     "En attente de configuration",
     "Activé",
     "Désactivé"
   ];
-
   const client = await pool.connect();
-
   try {
     await client.query("BEGIN");
-
     for (const wallet of wallets) {
       if (
         !networks.includes(wallet.network_name) ||
@@ -122,7 +138,6 @@ app.put("/api/admin/wallets", checkAdmin, async (req, res) => {
       ) {
         throw new Error("Données invalides");
       }
-
       await client.query(
         `UPDATE crypto_wallets
          SET wallet_address = $1,
@@ -136,9 +151,7 @@ app.put("/api/admin/wallets", checkAdmin, async (req, res) => {
         ]
       );
     }
-
     await client.query("COMMIT");
-
     res.json({
       success: true,
       message: "Adresses sauvegardées"
@@ -151,11 +164,13 @@ app.put("/api/admin/wallets", checkAdmin, async (req, res) => {
     client.release();
   }
 });
-
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
+});
 initializeDatabase()
   .then(() => {
     app.listen(PORT, "0.0.0.0", () => {
@@ -166,3 +181,8 @@ initializeDatabase()
     console.error("Database initialization failed:", error);
     process.exit(1);
   });
+0 commit comments
+Comments
+0
+ (0)
+Please sign in to comment.
