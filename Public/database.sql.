@@ -1,0 +1,23 @@
+CREATE TABLE wallet_addresses (
+    id SERIAL PRIMARY KEY,
+    network_name VARCHAR(100) UNIQUE NOT NULL,
+    wallet_address TEXT,
+    status VARCHAR(20) DEFAULT 'disabled',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO wallet_addresses (network_name) VALUES
+('T.BEP20 - USD'),
+('T.TRC20 - USD'),
+('BNB'),
+('TRX'),
+('S.BEP20 - USD'),
+('T.POLYGON - USD'),
+('T.ETH - USD'),
+('S.POLYGON - USD'),
+('S.ETH - USD'),
+('ETH'),
+('POLYGON'),
+('ETH - PYUSD')
+ON CONFLICT (network_name) DO NOTHING;
