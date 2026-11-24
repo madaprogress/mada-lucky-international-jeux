@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MADA LUCKY INTERNATIONAL - Wallet Admin</title>
-
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#101827;color:white}
@@ -21,18 +20,15 @@ button{padding:12px 18px;border:0;border-radius:6px;background:#d9a928;color:#17
 .note{color:#aebed1;font-size:13px}
 .save-btn{width:100%;background:#22c55e;color:white;font-size:16px;padding:15px}
 #message{font-weight:bold;overflow-wrap:anywhere}
+.login-btn{width:100%;font-size:16px;padding:14px}
 </style>
 </head>
-
 <body>
-
 <header>
 <h2>🌍 MADA LUCKY INTERNATIONAL</h2>
 <p>WALLET ADMINISTRATIF</p>
 </header>
-
 <main>
-
 <div class="card">
 <h3>💼 Tableau de bord</h3>
 <p>Gestion des adresses de réception crypto</p>
@@ -40,190 +36,121 @@ button{padding:12px 18px;border:0;border-radius:6px;background:#d9a928;color:#17
 <p id="connection">Connexion au serveur...</p>
 </div>
 
+<div class="card" id="loginBox">
+<h3>🔐 Connexion Admin</h3>
+<label>Mot de passe administrateur</label>
+<input type="password" id="pwdInput" placeholder="Mot de passe Admin">
+<button class="login-btn" onclick="chargerWallets()">Se connecter</button>
+</div>
+
 <div class="card">
 <h3>₿ CRYPTO WALLET</h3>
-
 <div id="networks"></div>
-
-<button class="save-btn" onclick="sauvegarder()">
-💾 SAUVEGARDER TOUTES LES ADRESSES
-</button>
-
+<button class="save-btn" onclick="sauvegarder()">💾 SAUVEGARDER TOUTES LES ADRESSES</button>
 <p id="message"></p>
 </div>
 
 <div class="card">
 <h3>⚙️ Configuration</h3>
 <label>Devise principale</label>
-<select disabled>
-<option>USD</option>
-</select>
-<p class="note">
-Les adresses de réception doivent être vérifiées avant leur activation.
-</p>
+<select disabled><option>USD</option></select>
+<p class="note">Les adresses de réception doivent être vérifiées avant leur activation.</p>
 </div>
-
 </main>
-
 <script>
-const networks = [
-"T.BEP20 - USD",
-"T.TRC20 - USD",
-"BNB",
-"TRX",
-"S.BEP20 - USD",
-"T.POLYGON - USD",
-"T.ETH - USD",
-"S.POLYGON - USD",
-"S.ETH - USD",
-"ETH",
-"POLYGON",
-"ETH - PYUSD"
-];
-
-const statuses = [
-"En attente de configuration",
-"Activé",
-"Désactivé"
-];
-
+const statuses = ["En attente de configuration","Activé","Désactivé"];
 const container = document.getElementById("networks");
-let adminPassword = "";
+let adminPassword = localStorage.getItem('mada_pwd') || "";
 
 function afficherWallets(data) {
   container.innerHTML = "";
-
-  data.forEach((wallet, index) => {
+  // FIX: serveur mety mamerina {wallets:[...]} na [...] mivantana
+  const list = Array.isArray(data) ? data : (data.wallets || data.data || []);
+  if(!list.length){
+    container.innerHTML = "<p>Aucun wallet trouvé. Vérifiez la base de données.</p>";
+    return;
+  }
+  list.forEach((wallet, index) => {
     const box = document.createElement("div");
     box.className = "network";
     box.dataset.network = wallet.network_name;
-
     const title = document.createElement("h3");
     title.textContent = (index + 1) + ". " + wallet.network_name;
-
     const label1 = document.createElement("label");
     label1.textContent = "Adresse de réception";
-
     const input = document.createElement("input");
     input.type = "text";
     input.placeholder = "Adresse publique " + wallet.network_name;
     input.value = wallet.wallet_address || "";
-
     const label2 = document.createElement("label");
     label2.textContent = "Statut";
-
     const select = document.createElement("select");
-
     statuses.forEach(status => {
       const option = document.createElement("option");
-      option.value = status;
-      option.textContent = status;
+      option.value = status; option.textContent = status;
       select.appendChild(option);
     });
-
-    select.value = wallet.status;
-
-    box.appendChild(title);
-    box.appendChild(label1);
-    box.appendChild(input);
-    box.appendChild(label2);
-    box.appendChild(select);
-
+    select.value = wallet.status || statuses[0];
+    box.appendChild(title); box.appendChild(label1); box.appendChild(input);
+    box.appendChild(label2); box.appendChild(select);
     container.appendChild(box);
   });
 }
 
 async function chargerWallets() {
-
-  adminPassword = prompt("Mot de passe administrateur :");
-
+  const inputPwd = document.getElementById("pwdInput");
+  if(inputPwd && inputPwd.value.trim()) adminPassword = inputPwd.value.trim();
   if (!adminPassword) {
-    document.getElementById("message").textContent =
-      "Accès annulé.";
-    document.getElementById("connection").textContent =
-      "Non connecté.";
+    document.getElementById("message").textContent = "Entrez le mot de passe.";
+    document.getElementById("connection").textContent = "Non connecté.";
     return;
   }
-
   try {
-    const response = await fetch("/api/admin/wallets", {
-      headers: {
-        "x-admin-password": adminPassword
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error("Accès refusé");
-    }
-
+    document.getElementById("connection").textContent = "Chargement...";
+    const response = await fetch("/api/admin/wallets", { headers: { "x-admin-password": adminPassword } });
+    if (!response.ok) throw new Error("Accès refusé - mot de passe incorrect");
     const data = await response.json();
-
     afficherWallets(data);
-
-    document.getElementById("connection").textContent =
-      "🟢 Connecté au serveur";
-
-    document.getElementById("message").textContent =
-      "Wallet chargé avec succès.";
-
+    localStorage.setItem('mada_pwd', adminPassword);
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("connection").textContent = "🟢 Connecté au serveur";
+    document.getElementById("message").textContent = "Wallet chargé avec succès.";
   } catch (error) {
-    document.getElementById("connection").textContent =
-      "🔴 Connexion impossible";
-
-    document.getElementById("message").textContent =
-      "Mot de passe incorrect ou erreur serveur.";
+    document.getElementById("connection").textContent = "🔴 Connexion impossible";
+    document.getElementById("message").textContent = "Mot de passe incorrect ou erreur serveur: " + error.message;
+    localStorage.removeItem('mada_pwd');
   }
 }
 
 async function sauvegarder() {
-
-  if (!adminPassword) {
-    alert("Veuillez vous connecter comme administrateur.");
-    return;
-  }
-
+  if (!adminPassword) { alert("Veuillez vous connecter comme administrateur."); return; }
   const wallets = [];
-
   document.querySelectorAll(".network").forEach(box => {
-    wallets.push({
-      network_name: box.dataset.network,
-      wallet_address: box.querySelector("input").value,
-      status: box.querySelector("select").value
-    });
+    wallets.push({ network_name: box.dataset.network, wallet_address: box.querySelector("input").value, status: box.querySelector("select").value });
   });
-
   try {
-    document.getElementById("message").textContent =
-      "Sauvegarde en cours...";
-
+    document.getElementById("message").textContent = "Sauvegarde en cours...";
     const response = await fetch("/api/admin/wallets", {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-password": adminPassword
-      },
-      body: JSON.stringify({
-        wallets: wallets
-      })
+      headers: { "Content-Type": "application/json", "x-admin-password": adminPassword },
+      body: JSON.stringify({ wallets: wallets })
     });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || "Erreur");
-    }
-
-    document.getElementById("message").textContent =
-      "✅ Adresses sauvegardées dans PostgreSQL !";
-
+    const result = await response.json().catch(()=>({}));
+    if (!response.ok) throw new Error(result.error || "Erreur");
+    document.getElementById("message").textContent = "✅ Adresses sauvegardées dans PostgreSQL !";
   } catch (error) {
-    document.getElementById("message").textContent =
-      "❌ Erreur de sauvegarde : " + error.message;
+    document.getElementById("message").textContent = "❌ Erreur de sauvegarde : " + error.message;
   }
 }
 
-chargerWallets();
+// Au chargement: si mot de passe déjà sauvegardé, connecter auto, sinon attendre le clic
+window.onload = async () => {
+  try{
+    const s = await fetch("/api/status"); const j = await s.json();
+    if(j.status==="online") document.getElementById("connection").textContent = "🟢 Serveur en ligne - Entrez le mot de passe";
+  }catch(e){}
+  if(adminPassword){ document.getElementById("pwdInput").value = adminPassword; chargerWallets(); }
+};
 </script>
-
 </body>
 </html>
