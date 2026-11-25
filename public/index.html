@@ -1,156 +1,65 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MADA LUCKY INTERNATIONAL - Wallet Admin</title>
+<title>MADA LUCKY INTERNATIONAL</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#101827;color:white}
 header{background:#172b49;padding:22px 15px;text-align:center;border-bottom:2px solid #d9a928}
 header h2{color:#f3c64e;margin:0}
 header p{color:#b8c6d9}
+.tabs{display:flex;max-width:950px;margin:15px auto 0;gap:10px;padding:0 18px}
+.tabs button{flex:1;padding:14px;border:0;border-radius:8px;background:#263952;color:white;font-weight:bold;cursor:pointer}
+.tabs button.active{background:#d9a928;color:#17233d}
 main{padding:18px;max-width:950px;margin:auto}
 .card{background:#1c2b42;padding:18px;margin-bottom:16px;border-radius:12px}
 h3{color:#f3c64e;margin-top:0}
 .network{background:#263952;padding:15px;margin:12px 0;border-radius:9px}
 label{display:block;margin:10px 0 6px}
 input,select{width:100%;padding:12px;border:0;border-radius:6px;background:#edf1f7;color:#17233d}
-button{padding:12px 18px;border:0;border-radius:6px;background:#d9a928;color:#17233d;font-weight:bold;margin-top:12px}
+button{padding:12px 18px;border:0;border-radius:6px;background:#d9a928;color:#17233d;font-weight:bold;margin-top:12px;cursor:pointer}
 .note{color:#aebed1;font-size:13px}
 .save-btn{width:100%;background:#22c55e;color:white;font-size:16px;padding:15px}
 #message{font-weight:bold;overflow-wrap:anywhere}
-.login-btn{width:100%;font-size:16px;padding:14px}
+.hidden{display:none}
+.num-box{background:#0f1a2e;border:1px solid #d9a928;padding:14px;border-radius:8px;margin-top:10px;word-break:break-all}
+.num-box b{color:#f3c64e}
+.grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:10px}
+.grid button{background:#263952;color:white;padding:10px 0;margin:0}
+.grid button.sel{background:#d9a928;color:#17233d}
 </style>
 </head>
 <body>
 <header>
 <h2>🌍 MADA LUCKY INTERNATIONAL</h2>
-<p>WALLET ADMINISTRATIF</p>
+<p id="topInfo">Connexion au serveur...</p>
 </header>
+
+<div class="tabs">
+<button id="tabJoueur" class="active" onclick="showTab('joueur')">🎮 JOUEUR</button>
+<button id="tabAdmin" onclick="showTab('admin')">🔐 ADMIN</button>
+</div>
+
 <main>
-<div class="card">
-<h3>💼 Tableau de bord</h3>
-<p>Gestion des adresses de réception crypto</p>
-<p class="note">Administration centrale de la plateforme</p>
-<p id="connection">Connexion au serveur...</p>
-</div>
+<!-- ========== JOUEUR ========== -->
+<div id="viewJoueur">
+  <div class="card">
+    <h3>👤 Inscription / Connexion</h3>
+    <label>Nom complet</label><input id="nom" placeholder="Nom complet">
+    <label>Numero mobile</label><input id="numero" placeholder="034 ...">
+    <label>Mot de passe</label><input type="password" id="pwd" placeholder="Mot de passe">
+    <label>Mot de passe retrait</label><input type="password" id="pwdRetrait" placeholder="Mot de passe retrait">
+    <button onclick="inscrire()">S'inscrire / Se connecter</button>
+    <p class="note">Solde : <b id="solde">0 $</b> | Ticket : <b id="ticket">0</b></p>
+  </div>
 
-<div class="card" id="loginBox">
-<h3>🔐 Connexion Admin</h3>
-<label>Mot de passe administrateur</label>
-<input type="password" id="pwdInput" placeholder="Mot de passe Admin">
-<button class="login-btn" onclick="chargerWallets()">Se connecter</button>
-</div>
-
-<div class="card">
-<h3>₿ CRYPTO WALLET</h3>
-<div id="networks"></div>
-<button class="save-btn" onclick="sauvegarder()">💾 SAUVEGARDER TOUTES LES ADRESSES</button>
-<p id="message"></p>
-</div>
-
-<div class="card">
-<h3>⚙️ Configuration</h3>
-<label>Devise principale</label>
-<select disabled><option>USD</option></select>
-<p class="note">Les adresses de réception doivent être vérifiées avant leur activation.</p>
-</div>
-</main>
-<script>
-const statuses = ["En attente de configuration","Activé","Désactivé"];
-const container = document.getElementById("networks");
-let adminPassword = localStorage.getItem('mada_pwd') || "";
-
-function afficherWallets(data) {
-  container.innerHTML = "";
-  // FIX: serveur mety mamerina {wallets:[...]} na [...] mivantana
-  const list = Array.isArray(data) ? data : (data.wallets || data.data || []);
-  if(!list.length){
-    container.innerHTML = "<p>Aucun wallet trouvé. Vérifiez la base de données.</p>";
-    return;
-  }
-  list.forEach((wallet, index) => {
-    const box = document.createElement("div");
-    box.className = "network";
-    box.dataset.network = wallet.network_name;
-    const title = document.createElement("h3");
-    title.textContent = (index + 1) + ". " + wallet.network_name;
-    const label1 = document.createElement("label");
-    label1.textContent = "Adresse de réception";
-    const input = document.createElement("input");
-    input.type = "text";
-    input.placeholder = "Adresse publique " + wallet.network_name;
-    input.value = wallet.wallet_address || "";
-    const label2 = document.createElement("label");
-    label2.textContent = "Statut";
-    const select = document.createElement("select");
-    statuses.forEach(status => {
-      const option = document.createElement("option");
-      option.value = status; option.textContent = status;
-      select.appendChild(option);
-    });
-    select.value = wallet.status || statuses[0];
-    box.appendChild(title); box.appendChild(label1); box.appendChild(input);
-    box.appendChild(label2); box.appendChild(select);
-    container.appendChild(box);
-  });
-}
-
-async function chargerWallets() {
-  const inputPwd = document.getElementById("pwdInput");
-  if(inputPwd && inputPwd.value.trim()) adminPassword = inputPwd.value.trim();
-  if (!adminPassword) {
-    document.getElementById("message").textContent = "Entrez le mot de passe.";
-    document.getElementById("connection").textContent = "Non connecté.";
-    return;
-  }
-  try {
-    document.getElementById("connection").textContent = "Chargement...";
-    const response = await fetch("/api/admin/wallets", { headers: { "x-admin-password": adminPassword } });
-    if (!response.ok) throw new Error("Accès refusé - mot de passe incorrect");
-    const data = await response.json();
-    afficherWallets(data);
-    localStorage.setItem('mada_pwd', adminPassword);
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("connection").textContent = "🟢 Connecté au serveur";
-    document.getElementById("message").textContent = "Wallet chargé avec succès.";
-  } catch (error) {
-    document.getElementById("connection").textContent = "🔴 Connexion impossible";
-    document.getElementById("message").textContent = "Mot de passe incorrect ou erreur serveur: " + error.message;
-    localStorage.removeItem('mada_pwd');
-  }
-}
-
-async function sauvegarder() {
-  if (!adminPassword) { alert("Veuillez vous connecter comme administrateur."); return; }
-  const wallets = [];
-  document.querySelectorAll(".network").forEach(box => {
-    wallets.push({ network_name: box.dataset.network, wallet_address: box.querySelector("input").value, status: box.querySelector("select").value });
-  });
-  try {
-    document.getElementById("message").textContent = "Sauvegarde en cours...";
-    const response = await fetch("/api/admin/wallets", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "x-admin-password": adminPassword },
-      body: JSON.stringify({ wallets: wallets })
-    });
-    const result = await response.json().catch(()=>({}));
-    if (!response.ok) throw new Error(result.error || "Erreur");
-    document.getElementById("message").textContent = "✅ Adresses sauvegardées dans PostgreSQL !";
-  } catch (error) {
-    document.getElementById("message").textContent = "❌ Erreur de sauvegarde : " + error.message;
-  }
-}
-
-// Au chargement: si mot de passe déjà sauvegardé, connecter auto, sinon attendre le clic
-window.onload = async () => {
-  try{
-    const s = await fetch("/api/status"); const j = await s.json();
-    if(j.status==="online") document.getElementById("connection").textContent = "🟢 Serveur en ligne - Entrez le mot de passe";
-  }catch(e){}
-  if(adminPassword){ document.getElementById("pwdInput").value = adminPassword; chargerWallets(); }
-};
-</script>
-</body>
-</html>
+  <div class="card">
+    <h3>💰 DEPOT - Minimum 1$</h3>
+    <label>Choisir poketra / wallet</label>
+    <select id="depotWallet" onchange="afficherNumeroDepot()"><option value="">-- Choisir --</option></select>
+    <div id="depotNumero" class="num-box hidden">Numero / Adresse : <b id="depotNumeroText"></b><br><span class="note">Envoyez direct, puis entrez référence. Admin valide.</span></div>
+    <label>Référence de transfert</label><input id="depotRef" placeholder="Référence">
+    <label>Montant envoyé</label><input id="depotMontant" placeholder="Ex:
