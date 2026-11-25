@@ -315,8 +315,27 @@ app.post("/api/deposit", requireUser, async (req, res) => {
       return res.status(400).json({ error: "Montant na devise tsy mety" });
     }
 
-    const result = await pool.query(
+       const result = await pool.query(
       `INSERT INTO deposit_requests
-       (user_id, amount, currency, payment_reference)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, amount,
+      (user_id, amount, currency, payment_reference, status)
+      VALUES ($1, $2, $3, $4, 'pending')
+      RETURNING id, amount, currency, status, created_at`,
+      [req.session.userId, value, currency, reference || ""]
+    );
+
+    res.json({ success: true, deposit: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+// START SERVER
+initializeDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log(`MAD LUCKY JEUX mandeha amin'ny port ${PORT}`);
+  });
+}).catch((error) => {
+  console.error("Erreur base de donnees:", error);
+  process.exit(1);
+}); 
